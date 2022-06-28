@@ -29,7 +29,7 @@ func resourceKubernetesServiceAccount() *schema.Resource {
 		},
 
 		Timeouts: &schema.ResourceTimeout{
-			Create: schema.DefaultTimeout(30 * time.Second),
+			Create: schema.DefaultTimeout(300 * time.Second),
 		},
 
 		Schema: map[string]*schema.Schema{
@@ -76,7 +76,11 @@ func resourceKubernetesServiceAccount() *schema.Resource {
 	}
 }
 
-func resourceKubernetesServiceAccountCreate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
+func resourceKubernetesServiceAccountCreate(
+	ctx context.Context,
+	d *schema.ResourceData,
+	meta interface{},
+) diag.Diagnostics {
 	conn, err := meta.(KubeClientsets).MainClientset()
 	if err != nil {
 		return diag.FromErr(err)
@@ -109,7 +113,13 @@ func resourceKubernetesServiceAccountCreate(ctx context.Context, d *schema.Resou
 	return resourceKubernetesServiceAccountRead(ctx, d, meta)
 }
 
-func getServiceAccountDefaultSecret(ctx context.Context, name string, config api.ServiceAccount, timeout time.Duration, conn *kubernetes.Clientset) (*api.Secret, error) {
+func getServiceAccountDefaultSecret(
+	ctx context.Context,
+	name string,
+	config api.ServiceAccount,
+	timeout time.Duration,
+	conn *kubernetes.Clientset,
+) (*api.Secret, error) {
 	var svcAccTokens []api.Secret
 	err := resource.RetryContext(ctx, timeout, func() *resource.RetryError {
 		resp, err := conn.CoreV1().ServiceAccounts(config.Namespace).Get(ctx, name, metav1.GetOptions{})
@@ -118,8 +128,15 @@ func getServiceAccountDefaultSecret(ctx context.Context, name string, config api
 		}
 
 		if len(resp.Secrets) == len(config.Secrets) {
-			log.Printf("[DEBUG] Configuration contains %d secrets, saw %d, expected %d", len(config.Secrets), len(resp.Secrets), len(config.Secrets)+1)
-			return resource.RetryableError(fmt.Errorf("Waiting for default secret of %q to appear", buildId(resp.ObjectMeta)))
+			log.Printf(
+				"[DEBUG] Configuration contains %d secrets, saw %d, expected %d",
+				len(config.Secrets),
+				len(resp.Secrets),
+				len(config.Secrets)+1,
+			)
+			return resource.RetryableError(
+				fmt.Errorf("Waiting for default secret of %q to appear", buildId(resp.ObjectMeta)),
+			)
 		}
 
 		diff := diffObjectReferences(config.Secrets, resp.Secrets)
@@ -140,11 +157,15 @@ func getServiceAccountDefaultSecret(ctx context.Context, name string, config api
 		}
 
 		if len(svcAccTokens) == 0 {
-			return resource.RetryableError(fmt.Errorf("Expected 1 generated service account token, %d found", len(svcAccTokens)))
+			return resource.RetryableError(
+				fmt.Errorf("Expected 1 generated service account token, %d found", len(svcAccTokens)),
+			)
 		}
 
 		if len(svcAccTokens) > 1 {
-			return resource.NonRetryableError(fmt.Errorf("Expected 1 generated service account token, %d found: %s", len(svcAccTokens), err))
+			return resource.NonRetryableError(
+				fmt.Errorf("Expected 1 generated service account token, %d found: %s", len(svcAccTokens), err),
+			)
 		}
 
 		return nil
@@ -156,7 +177,11 @@ func getServiceAccountDefaultSecret(ctx context.Context, name string, config api
 	return &svcAccTokens[0], nil
 }
 
-func findDefaultServiceAccount(ctx context.Context, sa *api.ServiceAccount, conn *kubernetes.Clientset) (string, diag.Diagnostics) {
+func findDefaultServiceAccount(
+	ctx context.Context,
+	sa *api.ServiceAccount,
+	conn *kubernetes.Clientset,
+) (string, diag.Diagnostics) {
 	/*
 	   The default service account token secret would have:
 	   - been created either at the same moment as the service account or _just_ after (Kubernetes controllers appears to work off a queue)
@@ -236,7 +261,11 @@ func diffObjectReferences(origOrs []api.ObjectReference, ors []api.ObjectReferen
 	return diff
 }
 
-func resourceKubernetesServiceAccountRead(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
+func resourceKubernetesServiceAccountRead(
+	ctx context.Context,
+	d *schema.ResourceData,
+	meta interface{},
+) diag.Diagnostics {
 	exists, err := resourceKubernetesServiceAccountExists(ctx, d, meta)
 	if err != nil {
 		return diag.FromErr(err)
@@ -295,7 +324,11 @@ func resourceKubernetesServiceAccountRead(ctx context.Context, d *schema.Resourc
 	return nil
 }
 
-func resourceKubernetesServiceAccountUpdate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
+func resourceKubernetesServiceAccountUpdate(
+	ctx context.Context,
+	d *schema.ResourceData,
+	meta interface{},
+) diag.Diagnostics {
 	conn, err := meta.(KubeClientsets).MainClientset()
 	if err != nil {
 		return diag.FromErr(err)
@@ -335,7 +368,9 @@ func resourceKubernetesServiceAccountUpdate(ctx context.Context, d *schema.Resou
 		return diag.Errorf("Failed to marshal update operations: %s", err)
 	}
 	log.Printf("[INFO] Updating service account %q: %v", name, string(data))
-	out, err := conn.CoreV1().ServiceAccounts(namespace).Patch(ctx, name, pkgApi.JSONPatchType, data, metav1.PatchOptions{})
+	out, err := conn.CoreV1().
+		ServiceAccounts(namespace).
+		Patch(ctx, name, pkgApi.JSONPatchType, data, metav1.PatchOptions{})
 	if err != nil {
 		return diag.Errorf("Failed to update service account: %s", err)
 	}
@@ -345,7 +380,11 @@ func resourceKubernetesServiceAccountUpdate(ctx context.Context, d *schema.Resou
 	return resourceKubernetesServiceAccountRead(ctx, d, meta)
 }
 
-func resourceKubernetesServiceAccountDelete(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
+func resourceKubernetesServiceAccountDelete(
+	ctx context.Context,
+	d *schema.ResourceData,
+	meta interface{},
+) diag.Diagnostics {
 	conn, err := meta.(KubeClientsets).MainClientset()
 	if err != nil {
 		return diag.FromErr(err)
@@ -368,7 +407,11 @@ func resourceKubernetesServiceAccountDelete(ctx context.Context, d *schema.Resou
 	return nil
 }
 
-func resourceKubernetesServiceAccountExists(ctx context.Context, d *schema.ResourceData, meta interface{}) (bool, error) {
+func resourceKubernetesServiceAccountExists(
+	ctx context.Context,
+	d *schema.ResourceData,
+	meta interface{},
+) (bool, error) {
 	conn, err := meta.(KubeClientsets).MainClientset()
 	if err != nil {
 		return false, err
@@ -390,7 +433,11 @@ func resourceKubernetesServiceAccountExists(ctx context.Context, d *schema.Resou
 	return true, err
 }
 
-func resourceKubernetesServiceAccountImportState(ctx context.Context, d *schema.ResourceData, meta interface{}) ([]*schema.ResourceData, error) {
+func resourceKubernetesServiceAccountImportState(
+	ctx context.Context,
+	d *schema.ResourceData,
+	meta interface{},
+) ([]*schema.ResourceData, error) {
 	conn, err := meta.(KubeClientsets).MainClientset()
 	if err != nil {
 		return nil, err
