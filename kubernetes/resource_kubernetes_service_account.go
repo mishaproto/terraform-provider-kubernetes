@@ -29,7 +29,7 @@ func resourceKubernetesServiceAccount() *schema.Resource {
 		},
 
 		Timeouts: &schema.ResourceTimeout{
-			Create: schema.DefaultTimeout(300 * time.Second),
+			Create: schema.DefaultTimeout(301 * time.Second),
 		},
 
 		Schema: map[string]*schema.Schema{
